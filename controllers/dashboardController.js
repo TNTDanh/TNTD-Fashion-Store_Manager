@@ -17,7 +17,7 @@ exports.index = async (req, res) => {
        LIMIT 10`
     );
     const [topProducts] = await pool.query(
-      `SELECT p.name, pv.sku, SUM(sii.quantity) AS total_sold
+      `SELECT p.name AS product_name, pv.sku, SUM(sii.quantity) AS total_sold
        FROM sales_invoice_items sii
        JOIN product_variants pv ON sii.product_variant_id = pv.id
        JOIN products p ON pv.product_id = p.id

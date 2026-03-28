@@ -34,6 +34,9 @@
       </tr>
     </thead>
     <tbody>
+    <% if (!customers.length) { %>
+      <tr><td colspan="6" class="text-center text-muted">Chưa có khách hàng</td></tr>
+    <% } %>
     <% customers.forEach(c => { %>
       <form id="cust-<%= c.id %>" method="POST" action="/customers/<%= c.id %>/edit"></form>
       <tr>
@@ -44,9 +47,11 @@
         <td><input type="text" name="address" value="<%= c.address || '' %>" class="form-control form-control-sm" form="cust-<%= c.id %>"></td>
         <td class="text-end d-flex gap-2">
           <button class="btn btn-sm btn-success" form="cust-<%= c.id %>">Lưu</button>
-          <form method="POST" action="/customers/<%= c.id %>/delete" onsubmit="return confirm('Xóa?');" class="d-inline">
-            <button class="btn btn-sm btn-outline-danger">Xóa</button>
-          </form>
+          <% if (user && user.role === 'admin') { %>
+            <form method="POST" action="/customers/<%= c.id %>/delete" data-confirm="Xóa khách hàng này?" class="d-inline">
+              <button class="btn btn-sm btn-outline-danger">Xóa</button>
+            </form>
+          <% } %>
         </td>
       </tr>
     <% }) %>

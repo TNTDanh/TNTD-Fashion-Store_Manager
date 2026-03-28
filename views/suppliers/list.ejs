@@ -34,6 +34,9 @@
       </tr>
     </thead>
     <tbody>
+    <% if (!suppliers.length) { %>
+      <tr><td colspan="6" class="text-center text-muted">Chưa có nhà cung cấp</td></tr>
+    <% } %>
     <% suppliers.forEach(s => { %>
       <form id="sup-<%= s.id %>" method="POST" action="/suppliers/<%= s.id %>/edit"></form>
       <tr>
@@ -44,7 +47,7 @@
         <td><input type="text" name="address" value="<%= s.address || '' %>" class="form-control form-control-sm" form="sup-<%= s.id %>"></td>
         <td class="text-end d-flex gap-2">
           <button class="btn btn-sm btn-success" form="sup-<%= s.id %>">Lưu</button>
-          <form method="POST" action="/suppliers/<%= s.id %>/delete" onsubmit="return confirm('Xóa?');" class="d-inline">
+          <form method="POST" action="/suppliers/<%= s.id %>/delete" data-confirm="Xóa nhà cung cấp này?" class="d-inline">
             <button class="btn btn-sm btn-outline-danger">Xóa</button>
           </form>
         </td>

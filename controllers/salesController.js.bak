@@ -52,9 +52,9 @@ exports.create = async (req, res) => {
     return res.redirect('/sales/new');
   }
 
-  if (!Array.isArray(variantIds)) variantIds = typeof variantIds === 'undefined' ? [] : [variantIds];
-  if (!Array.isArray(quantities)) quantities = typeof quantities === 'undefined' ? [] : [quantities];
-  if (!Array.isArray(unitPrices)) unitPrices = typeof unitPrices === 'undefined' ? [] : [unitPrices];
+  if (!Array.isArray(variantIds)) variantIds = [variantIds];
+  if (!Array.isArray(quantities)) quantities = [quantities];
+  if (!Array.isArray(unitPrices)) unitPrices = [unitPrices];
 
   const items = variantIds
     .map((v, idx) => ({
@@ -80,17 +80,14 @@ exports.create = async (req, res) => {
   items.forEach((i) => {
     quantityMap[i.variantId] = (quantityMap[i.variantId] || 0) + i.quantity;
   });
-  // eslint-disable-next-line no-console
-  console.log('QUANTITY MAP =', quantityMap);
   const variantIdList = Object.keys(quantityMap);
-
   const [stockRows] = await pool.query(
     `SELECT id, stock_quantity, sku, price FROM product_variants WHERE id IN (${variantIdList
       .map(() => '?')
       .join(',')})`,
     variantIdList
   );
-  const stockMap = Object.fromEntries(stockRows.map((r) => [String(r.id), r]));
+  const stockMap = Object.fromEntries(stockRows.map((r) => [r.id, r]));
 
   const validatedItems = [];
   for (const id of variantIdList) {
@@ -99,41 +96,22 @@ exports.create = async (req, res) => {
       req.session.flash = { type: 'danger', message: 'Biến thể không hợp lệ' };
       return res.redirect('/sales/new');
     }
-    const qty = Number(quantityMap[id]);
-    const stockQty = Number(row.stock_quantity) || 0;
-    const price = Number(row.price) || 0;
-    if (qty <= 0) {
-      req.session.flash = { type: 'danger', message: 'Số lượng phải lớn hơn 0' };
-      return res.redirect('/sales/new');
-    }
-    if (qty > stockQty) {
+    const qty = quantityMap[id];
+    if (qty > row.stock_quantity) {
       req.session.flash = {
         type: 'danger',
-        message: `Số lượng vượt tồn kho cho SKU ${row.sku} (tồn ${stockQty})`
+        message: `Số lượng vượt tồn kho cho SKU ${row.sku} (tồn ${row.stock_quantity})`
       };
-      return res.redirect('/sales/new');
-    }
-    if (price <= 0) {
-      req.session.flash = { type: 'danger', message: `Giá bán của SKU ${row.sku} không hợp lệ` };
       return res.redirect('/sales/new');
     }
     validatedItems.push({
       variantId: Number(id),
       quantity: qty,
-      unitPrice: price
+      unitPrice: row.price
     });
   }
 
-  if (!validatedItems.length) {
-    req.session.flash = { type: 'danger', message: 'Chưa có dòng hàng hóa hợp lệ' };
-    return res.redirect('/sales/new');
-  }
-
   const totalAmount = validatedItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
-  if (totalAmount <= 0) {
-    req.session.flash = { type: 'danger', message: 'Tổng tiền không hợp lệ' };
-    return res.redirect('/sales/new');
-  }
   const finalAmount = totalAmount - totalAmount * (discount / 100);
 
   const conn = await pool.getConnection();
@@ -173,3 +151,4 @@ exports.create = async (req, res) => {
     conn.release();
   }
 };
+

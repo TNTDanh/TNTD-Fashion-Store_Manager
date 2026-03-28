@@ -15,6 +15,12 @@
         container.appendChild(clone);
       }
     });
+    document.addEventListener('submit', function(e) {
+      const msg = e.target.dataset && e.target.dataset.confirm;
+      if (msg && !confirm(msg)) {
+        e.preventDefault();
+      }
+    });
   </script>
 </body>
 </html>

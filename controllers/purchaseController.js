@@ -47,6 +47,11 @@ exports.create = async (req, res) => {
   const { supplier_id, receipt_date, note } = req.body;
   let { variant_id: variantIds, quantity: quantities, unit_cost: unitCosts } = req.body;
 
+  if (!supplier_id || !receipt_date) {
+    req.session.flash = { type: 'danger', message: 'Nhà cung cấp và ngày giờ là bắt buộc' };
+    return res.redirect('/purchases/new');
+  }
+
   if (!Array.isArray(variantIds)) variantIds = [variantIds];
   if (!Array.isArray(quantities)) quantities = [quantities];
   if (!Array.isArray(unitCosts)) unitCosts = [unitCosts];
@@ -60,7 +65,7 @@ exports.create = async (req, res) => {
     .filter((i) => i.variantId && i.quantity > 0 && i.unitCost >= 0);
 
   if (!items.length) {
-    req.session.flash = { type: 'danger', message: 'Chưa có dòng hàng hóa' };
+    req.session.flash = { type: 'danger', message: 'Chưa có dòng hàng hóa hợp lệ' };
     return res.redirect('/purchases/new');
   }
 
@@ -95,8 +100,6 @@ exports.create = async (req, res) => {
     return res.redirect(`/purchases/${receiptId}`);
   } catch (err) {
     await conn.rollback();
-    // eslint-disable-next-line no-console
-    console.error(err);
     req.session.flash = { type: 'danger', message: 'Lỗi tạo phiếu nhập' };
     return res.redirect('/purchases');
   } finally {

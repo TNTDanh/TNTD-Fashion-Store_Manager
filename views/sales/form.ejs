@@ -2,7 +2,7 @@
 
 <h4 class="mb-3">Tạo hóa đơn</h4>
 
-<form method="POST" action="/sales/new">
+<form method="POST" action="/sales/new" novalidate>
   <div class="row g-3">
     <div class="col-md-4">
       <label class="form-label">Khách hàng</label>
@@ -33,47 +33,56 @@
       <button type="button" class="btn btn-sm btn-outline-primary add-line" data-target="#sales-lines">+ Thêm dòng</button>
     </div>
     <div id="sales-lines" class="line-container">
-      <div class="row g-2 align-items-end mb-2 line-template d-none">
+      <!-- template hidden (disabled so it won't submit) -->
+      <div class="row gy-2 gx-3 align-items-center mb-2 line-template d-none">
         <div class="col-md-5">
           <label class="form-label">Biến thể</label>
-          <select name="variant_id" class="form-select">
+          <select name="variant_id[]" class="form-select" disabled>
+            <option value="" selected disabled>-- Chọn biến thể --</option>
             <% variants.forEach(v => { %>
-              <option value="<%= v.id %>"><%= v.product_name %> - <%= v.sku %> (Tồn <%= v.stock_quantity %>)</option>
+              <option value="<%= v.id %>" data-price="<%= v.price %>" data-stock="<%= v.stock_quantity %>">
+                <%= v.product_name %> - <%= v.sku %> (Tồn <%= v.stock_quantity %>)
+              </option>
             <% }) %>
           </select>
+          <div class="form-text text-muted stock-hint"></div>
         </div>
         <div class="col-md-2">
           <label class="form-label">Số lượng</label>
-          <input type="number" name="quantity" class="form-control" value="1" min="1">
+          <input type="number" name="quantity[]" class="form-control" value="1" min="1" disabled>
         </div>
         <div class="col-md-3">
           <label class="form-label">Đơn giá</label>
-          <input type="number" name="unit_price" class="form-control" step="1000" value="0">
+          <input type="number" name="unit_price[]" class="form-control" step="1000" value="0" readonly disabled>
         </div>
-        <div class="col-md-2">
-          <button type="button" class="btn btn-outline-danger w-100" onclick="this.closest('.row').remove()">Xóa</button>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="button" class="btn btn-outline-danger w-100 align-self-end" onclick="this.closest('.row').remove()">Xóa</button>
         </div>
       </div>
 
-      <!-- first line -->
-      <div class="row g-2 align-items-end mb-2">
+      <!-- first visible line -->
+      <div class="row gy-2 gx-3 align-items-center mb-2">
         <div class="col-md-5">
-          <label class="form-label">Biến thể</label>
-          <select name="variant_id" class="form-select" required>
+          <label class="form-label action-col">Biến thể</label>
+          <select name="variant_id[]" class="form-select" required>
+            <option value="" selected disabled>-- Chọn biến thể --</option>
             <% variants.forEach(v => { %>
-              <option value="<%= v.id %>"><%= v.product_name %> - <%= v.sku %> (Tồn <%= v.stock_quantity %>)</option>
+              <option value="<%= v.id %>" data-price="<%= v.price %>" data-stock="<%= v.stock_quantity %>">
+                <%= v.product_name %> - <%= v.sku %> (Tồn <%= v.stock_quantity %>)
+              </option>
             <% }) %>
           </select>
+          <div class="form-text text-muted stock-hint"></div>
         </div>
         <div class="col-md-2">
           <label class="form-label">Số lượng</label>
-          <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+          <input type="number" name="quantity[]" class="form-control" value="1" min="1" required>
         </div>
         <div class="col-md-3">
           <label class="form-label">Đơn giá</label>
-          <input type="number" name="unit_price" class="form-control" step="1000" value="0" required>
+          <input type="number" name="unit_price[]" class="form-control" step="1000" value="0" readonly>
         </div>
-        <div class="col-md-2">
+        <div class="col-md-2 action-col d-flex align-items-end">
           <button type="button" class="btn btn-outline-danger w-100" onclick="this.closest('.row').remove()">Xóa</button>
         </div>
       </div>
@@ -85,5 +94,53 @@
     <a class="btn btn-secondary" href="/sales">Hủy</a>
   </div>
 </form>
+
+<script>
+  function setPrice(selectEl) {
+    if (!selectEl) return;
+    const price = selectEl.options[selectEl.selectedIndex]?.dataset.price || 0;
+    const priceInput = selectEl.closest('.row')?.querySelector('input[name="unit_price[]"]');
+    if (priceInput) priceInput.value = price;
+    const stock = selectEl.options[selectEl.selectedIndex]?.dataset.stock || '';
+    const stockHint = selectEl.closest('.row')?.querySelector('.stock-hint');
+    if (stockHint) stockHint.textContent = stock ? `Tồn hiện tại: ${stock}` : '';
+    const qtyInput = selectEl.closest('.row')?.querySelector('input[name="quantity[]"]');
+    if (qtyInput && stock) {
+      qtyInput.setAttribute('max', stock);
+    }
+  }
+
+  document.addEventListener('change', function(e) {
+    if (e.target.matches('select[name="variant_id[]"]')) {
+      setPrice(e.target);
+    }
+    if (e.target.matches('input[name="quantity[]"]')) {
+      const max = Number(e.target.getAttribute('max'));
+      if (max && Number(e.target.value) > max) {
+        e.target.value = max;
+      }
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (e.target.matches('.add-line')) {
+      const container = document.querySelector(e.target.dataset.target);
+      const template = container?.querySelector('.line-template');
+      if (!container || !template) return;
+      const clone = template.cloneNode(true);
+      clone.classList.remove('line-template', 'd-none');
+      clone.querySelectorAll('select, input').forEach((el) => {
+        el.disabled = false;
+        if (el.tagName === 'SELECT') el.selectedIndex = 0;
+        if (el.name === 'quantity[]') el.value = 1;
+        if (el.name === 'unit_price[]') el.value = 0;
+      });
+      container.appendChild(clone);
+    }
+  });
+
+  // Init price for first row if preselected
+  document.querySelectorAll('select[name="variant_id[]"]').forEach((sel) => setPrice(sel));
+</script>
 
 <%- include('../partials/footer') %>
