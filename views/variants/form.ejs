@@ -1,0 +1,46 @@
+<%- include('../partials/header', { title: title }) %>
+
+<h4 class="mb-3"><%= title %></h4>
+
+<form method="POST" action="<%= variant ? '/variants/' + variant.id + '/edit' : '/variants/new' %>">
+  <div class="row g-3">
+    <div class="col-md-4">
+      <label class="form-label">Sản phẩm</label>
+      <select name="product_id" class="form-select" required>
+        <% products.forEach(p => { %>
+          <option value="<%= p.id %>" <%= variant && variant.product_id === p.id ? 'selected' : '' %>><%= p.name %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Size</label>
+      <input type="text" name="size" class="form-control" value="<%= variant ? variant.size : '' %>" required>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Màu</label>
+      <input type="text" name="color" class="form-control" value="<%= variant ? variant.color : '' %>" required>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label">SKU</label>
+      <input type="text" name="sku" class="form-control" value="<%= variant ? variant.sku : '' %>" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Giá bán</label>
+      <input type="number" name="price" class="form-control" value="<%= variant ? variant.price : '' %>" step="1000" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Giá vốn</label>
+      <input type="number" name="cost" class="form-control" value="<%= variant ? variant.cost : '' %>" step="1000" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Tồn kho</label>
+      <input type="number" name="stock_quantity" class="form-control" value="<%= variant ? variant.stock_quantity : 0 %>">
+    </div>
+  </div>
+  <div class="mt-3">
+    <button class="btn btn-primary">Lưu</button>
+    <a class="btn btn-secondary" href="/variants">Hủy</a>
+  </div>
+</form>
+
+<%- include('../partials/footer') %>

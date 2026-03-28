@@ -1,0 +1,57 @@
+<%- include('../partials/header', { title: title }) %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>Khách hàng</h4>
+  <form class="row g-2 align-items-center" method="POST" action="/customers/new">
+    <div class="col">
+      <input type="text" name="name" class="form-control form-control-sm" placeholder="Tên" required>
+    </div>
+    <div class="col">
+      <input type="text" name="phone" class="form-control form-control-sm" placeholder="Điện thoại">
+    </div>
+    <div class="col">
+      <input type="email" name="email" class="form-control form-control-sm" placeholder="Email">
+    </div>
+    <div class="col">
+      <input type="text" name="address" class="form-control form-control-sm" placeholder="Địa chỉ">
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-sm btn-primary">Thêm</button>
+    </div>
+  </form>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Tên</th>
+        <th>Điện thoại</th>
+        <th>Email</th>
+        <th>Địa chỉ</th>
+        <th>Thao tác</th>
+      </tr>
+    </thead>
+    <tbody>
+    <% customers.forEach(c => { %>
+      <form id="cust-<%= c.id %>" method="POST" action="/customers/<%= c.id %>/edit"></form>
+      <tr>
+        <td><%= c.id %></td>
+        <td><input type="text" name="name" value="<%= c.name %>" class="form-control form-control-sm" form="cust-<%= c.id %>"></td>
+        <td><input type="text" name="phone" value="<%= c.phone || '' %>" class="form-control form-control-sm" form="cust-<%= c.id %>"></td>
+        <td><input type="email" name="email" value="<%= c.email || '' %>" class="form-control form-control-sm" form="cust-<%= c.id %>"></td>
+        <td><input type="text" name="address" value="<%= c.address || '' %>" class="form-control form-control-sm" form="cust-<%= c.id %>"></td>
+        <td class="text-end d-flex gap-2">
+          <button class="btn btn-sm btn-success" form="cust-<%= c.id %>">Lưu</button>
+          <form method="POST" action="/customers/<%= c.id %>/delete" onsubmit="return confirm('Xóa?');" class="d-inline">
+            <button class="btn btn-sm btn-outline-danger">Xóa</button>
+          </form>
+        </td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,109 @@
+const pool = require('../config/db');
+
+exports.list = async (req, res) => {
+  const [rows] = await pool.query(
+    `SELECT si.*, c.name AS customer_name, u.username
+     FROM sales_invoices si
+     LEFT JOIN customers c ON si.customer_id = c.id
+     JOIN users u ON si.user_id = u.id
+     ORDER BY si.invoice_date DESC`
+  );
+  res.render('sales/list', { title: 'Hóa đơn bán', invoices: rows });
+};
+
+exports.detail = async (req, res) => {
+  const { id } = req.params;
+  const [[invoice]] = await pool.query(
+    `SELECT si.*, c.name AS customer_name, u.username
+     FROM sales_invoices si
+     LEFT JOIN customers c ON si.customer_id = c.id
+     JOIN users u ON si.user_id = u.id
+     WHERE si.id = ?`,
+    [id]
+  );
+  const [items] = await pool.query(
+    `SELECT sii.*, pv.sku, pv.size, pv.color, p.name AS product_name
+     FROM sales_invoice_items sii
+     JOIN product_variants pv ON sii.product_variant_id = pv.id
+     JOIN products p ON pv.product_id = p.id
+     WHERE sii.invoice_id = ?`,
+    [id]
+  );
+  res.render('sales/detail', { title: 'Chi tiết hóa đơn', invoice, items });
+};
+
+exports.newForm = async (req, res) => {
+  const [customers] = await pool.query('SELECT id, name FROM customers ORDER BY name');
+  const [variants] = await pool.query(
+    `SELECT pv.id, pv.sku, pv.size, pv.color, pv.price, pv.stock_quantity, p.name AS product_name
+     FROM product_variants pv
+     JOIN products p ON pv.product_id = p.id
+     ORDER BY p.name, pv.sku`
+  );
+  res.render('sales/form', { title: 'Tạo hóa đơn', customers, variants });
+};
+
+exports.create = async (req, res) => {
+  const { customer_id, invoice_date, discount_percent, note } = req.body;
+  let { variant_id: variantIds, quantity: quantities, unit_price: unitPrices } = req.body;
+
+  if (!Array.isArray(variantIds)) variantIds = [variantIds];
+  if (!Array.isArray(quantities)) quantities = [quantities];
+  if (!Array.isArray(unitPrices)) unitPrices = [unitPrices];
+
+  const items = variantIds
+    .map((v, idx) => ({
+      variantId: Number(v),
+      quantity: Number(quantities[idx]),
+      unitPrice: Number(unitPrices[idx])
+    }))
+    .filter((i) => i.variantId && i.quantity > 0 && i.unitPrice >= 0);
+
+  if (!items.length) {
+    req.session.flash = { type: 'danger', message: 'Chưa có dòng hàng hóa' };
+    return res.redirect('/sales/new');
+  }
+
+  const totalAmount = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const discount = Number(discount_percent) || 0;
+  const finalAmount = totalAmount - totalAmount * (discount / 100);
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [result] = await conn.query(
+      `INSERT INTO sales_invoices (customer_id, user_id, invoice_date, total_amount, discount_percent, final_amount, note)
+       VALUES (?,?,?,?,?,?,?)`,
+      [customer_id || null, req.session.user.id, invoice_date, totalAmount, discount, finalAmount, note || null]
+    );
+    const invoiceId = result.insertId;
+
+    for (const item of items) {
+      const lineTotal = item.quantity * item.unitPrice;
+      await conn.query(
+        `INSERT INTO sales_invoice_items (invoice_id, product_variant_id, quantity, unit_price, line_total)
+         VALUES (?,?,?,?,?)`,
+        [invoiceId, item.variantId, item.quantity, item.unitPrice, lineTotal]
+      );
+      await conn.query(
+        'UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE id = ?',
+        [item.quantity, item.variantId]
+      );
+      await conn.query(
+        `INSERT INTO inventory_movements (product_variant_id, movement_type, ref_type, ref_id, quantity, note)
+         VALUES (?,?,?,?,?,?)`,
+        [item.variantId, 'sale', 'sales_invoice', invoiceId, -Math.abs(item.quantity), 'Bán hàng']
+      );
+    }
+    await conn.commit();
+    return res.redirect(`/sales/${invoiceId}`);
+  } catch (err) {
+    await conn.rollback();
+    // eslint-disable-next-line no-console
+    console.error(err);
+    req.session.flash = { type: 'danger', message: 'Lỗi tạo hóa đơn' };
+    return res.redirect('/sales');
+  } finally {
+    conn.release();
+  }
+};

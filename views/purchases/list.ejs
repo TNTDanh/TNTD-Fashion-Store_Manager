@@ -1,0 +1,33 @@
+<%- include('../partials/header', { title: title }) %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4>Phiếu nhập</h4>
+  <a class="btn btn-primary" href="/purchases/new">Tạo phiếu nhập</a>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Nhà cung cấp</th>
+        <th>Ngày</th>
+        <th>Tổng tiền</th>
+        <th>Nhân viên</th>
+      </tr>
+    </thead>
+    <tbody>
+    <% receipts.forEach(r => { %>
+      <tr>
+        <td><a href="/purchases/<%= r.id %>">#<%= r.id %></a></td>
+        <td><%= r.supplier_name %></td>
+        <td><%= new Date(r.receipt_date).toLocaleString('vi-VN') %></td>
+        <td><%= new Intl.NumberFormat('vi-VN').format(r.total_amount) %> đ</td>
+        <td><%= r.username %></td>
+      </tr>
+    <% }) %>
+    </tbody>
+  </table>
+</div>
+
+<%- include('../partials/footer') %>
